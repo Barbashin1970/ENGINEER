@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сценарии калькулятора</title>
+    <link rel="icon" href="data:,">
+    <style>
+        body { font-family: -apple-system, 'Segoe UI', sans-serif; margin: 16px; color: #1a1a2e; background: #fff; }
+        #summary { font-size: 1.2rem; font-weight: 600; }
+        table { border-collapse: collapse; margin: 12px 0; font-size: 0.9rem; }
+        th, td { border: 1px solid #ccd; padding: 4px 8px; text-align: left; vertical-align: top; }
+        tr.fail td { background: #ffecec; }
+        tr.pass td:last-child { color: #0a7d3b; }
+        tr.fail td:last-child { color: #c0262d; }
+        code { font-size: 0.85rem; }
+        iframe { border: 1px solid #ccd; }
+    </style>
+</head>
+<body>
+    <h1>Сценарии калькулятора</h1>
+    <p>Страница нажимает кнопки калькулятора в рамке ниже и сверяет табло.
+       Другая версия: <code>?target=../docs/gigacode-original/</code></p>
+    <p id="summary">Идёт проверка…</p>
+    <table id="report"></table>
+    <iframe id="calc" title="Калькулятор под проверкой" width="540" height="960"></iframe>
+
+    <script src="scenarios.js"></script>
+    <script>
+        const target = new URLSearchParams(location.search).get('target') || '../';
+        const frame = document.getElementById('calc');
+        frame.addEventListener('load', () => runAll(frame.contentWindow));
+        frame.src = target + 'index.html';
+
+        // Typographic signs (− × ÷) and ASCII signs (- * /) count as the same text
+        function normalize(text) {
+            return String(text).trim().replace(/−/g, '-').replace(/×/g, '*').replace(/÷/g, '/');
+        }
+
+        function runAll(win) {
+            const doc = win.document;
+            const buttons = {};
+            doc.querySelectorAll('.buttons button').forEach((b) => { buttons[b.textContent.trim()] = b; });
+            buttons['DEG/RAD'] = doc.getElementById('degRadBtn');
+            buttons['INV'] = doc.getElementById('invBtn');
+            const display = doc.getElementById('result');
+            // DEG/RAD highlight right after page load, before any scenario touches it
+            const degAtLoad = degIndicatorMatches();
+
+            function degIndicatorMatches() {
+                const button = buttons['DEG/RAD'];
+                return (button.textContent.trim() === 'DEG') === button.classList.contains('active');
+            }
+
+            function keydown(key, extra) {
+                const event = new win.KeyboardEvent('keydown', Object.assign({ key, bubbles: true, cancelable: true }, extra));
+                doc.body.dispatchEvent(event);
+                return event;
+            }
+
+            function press(step) {
+                if (step.startsWith('key:')) {
+                    keydown(step.slice(4));
+                    return;
+                }
+                const button = buttons[step];
+                if (!button) throw new Error('нет кнопки «' + step + '»');
+                button.click();
+            }
+
+            const checks = {
+                shortcutFree() {
+                    return keydown('r', { metaKey: true }).defaultPrevented ? 'перехвачено' : 'не перехвачено';
+                },
+                degIndicator() {
+                    let consistent = degAtLoad;
+                    for (let i = 0; i < 2; i++) {
+                        buttons['DEG/RAD'].click();
+                        consistent = consistent && degIndicatorMatches();
+                    }
+                    return consistent ? 'совпадает' : 'не совпадает';
+                },
+                equalsHeight() {
+                    return buttons['='].offsetHeight === buttons['0'].offsetHeight ? 'одной высоты' : 'выше остальных';
+                },
+            };
+
+            function reset() {
+                buttons['AC'].click();
+                if (buttons['DEG/RAD'].textContent.trim() !== 'DEG') buttons['DEG/RAD'].click();
+                if (buttons['INV'].classList.contains('active')) buttons['INV'].click();
+            }
+
+            const results = SCENARIOS.map((scenario) => {
+                reset();
+                let actual;
+                try {
+                    if (scenario.check) {
+                        actual = checks[scenario.check]();
+                    } else {
+                        scenario.steps.forEach(press);
+                        actual = display.textContent.trim();
+                    }
+                } catch (error) {
+                    actual = 'сбой: ' + error.message;
+                }
+                return { scenario, actual, ok: normalize(actual) === normalize(scenario.expect) };
+            });
+            reset();
+            render(results);
+        }
+
+        function render(results) {
+            const table = document.getElementById('report');
+            const head = table.insertRow();
+            ['№', 'Сценарий', 'Нажатия', 'Ждём', 'На табло', ''].forEach((title) => {
+                const th = document.createElement('th');
+                th.textContent = title;
+                head.appendChild(th);
+            });
+            results.forEach(({ scenario, actual, ok }) => {
+                const row = table.insertRow();
+                row.className = ok ? 'pass' : 'fail';
+                const steps = scenario.check ? '(проверка ' + scenario.check + ')' : scenario.steps.join(' ');
+                [scenario.id, scenario.name, steps, scenario.expect, actual, ok ? 'да' : 'нет'].forEach((text) => {
+                    row.insertCell().textContent = text;
+                });
+            });
+
+            const passed = results.filter((r) => r.ok).length;
+            const groups = {};
+            results.forEach(({ scenario, ok }) => {
+                groups[scenario.group] = groups[scenario.group] || { passed: 0, total: 0 };
+                groups[scenario.group].total++;
+                if (ok) groups[scenario.group].passed++;
+            });
+            const byGroup = Object.entries(groups).map(([name, g]) => name + ' ' + g.passed + '/' + g.total).join('; ');
+            const summary = document.getElementById('summary');
+            summary.textContent = 'Пройдено ' + passed + ' из ' + results.length + ' (' + byGroup + ')';
+            summary.dataset.passed = passed;
+            summary.dataset.total = results.length;
+            document.title = 'Сценарии: ' + passed + '/' + results.length;
+        }
+    </script>
+</body>
+</html>

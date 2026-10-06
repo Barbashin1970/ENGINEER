@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+"""
+Инженерный калькулятор - HTTP сервер
+Запускает локальный сервер для работы калькулятора
+"""
+
+import http.server
+import socketserver
+import os
+import sys
+import webbrowser
+import threading
+
+# Устанавливаем рабочую директорию
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+os.chdir(SCRIPT_DIR)
+
+PORT = 8080
+
+class QuietHandler(http.server.SimpleHTTPRequestHandler):
+    """HTTP обработчик с подавленными логами"""
+    
+    def log_message(self, format, *args):
+        """Подавляем стандартные логи"""
+        pass
+    
+    def end_headers(self):
+        """Добавляем CORS заголовки"""
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        super().end_headers()
+
+def open_browser():
+    """Открывает калькулятор в браузере"""
+    url = f'http://localhost:{PORT}'
+    try:
+        webbrowser.open(url)
+    except Exception as e:
+        print(f"⚠️  Не удалось открыть браузер: {e}")
+        print(f"   Откройте вручную: {url}")
+
+def print_banner():
+    """Выводит приветственный баннер"""
+    print()
+    print("=" * 60)
+    print("  🔬 ИНЖЕНЕРНЫЙ КАЛЬКУЛЯТОР")
+    print("=" * 60)
+    print()
+    print("  🌐 Сервер запущен:")
+    print(f"     http://localhost:{PORT}")
+    print()
+    print("  📁 Рабочая директория:")
+    print(f"     {SCRIPT_DIR}")
+    print()
+    print("  ⌨️  Для остановки нажмите Ctrl+C")
+    print("=" * 60)
+    print()
+
+def main():
+    """Основная функция"""
+    try:
+        # Показываем баннер
+        print_banner()
+        
+        # Открываем браузер в отдельном потоке с задержкой
+        timer = threading.Timer(1.0, open_browser)
+        timer.daemon = True
+        timer.start()
+        
+        # Настраиваем HTTP сервер
+        with socketserver.TCPServer(("", PORT), QuietHandler) as httpd:
+            print("✅ Сервер успешно запущен!")
+            print()
+            
+            # Запускаем сервер
+            try:
+                httpd.serve_forever()
+            except KeyboardInterrupt:
+                print()
+                print()
+                print("=" * 60)
+                print("  🛑 Остановка сервера...")
+                print("=" * 60)
+                print()
+                print("  Сервер остановлен. Спасибо за использование!")
+                print()
+                
+    except OSError as e:
+        if "Address already in use" in str(e) or e.errno == 48:
+            print(f"❌ Ошибка: Порт {PORT} уже используется!")
+            print()
+            print("  Решения:")
+            print(f"    1. Закройте другие процессы на порту {PORT}")
+            print(f"    2. Или запустите с другим портом: python server.py <порт>")
+            print()
+            sys.exit(1)
+        else:
+            print(f"❌ Ошибка: {e}")
+            sys.exit(1)
+    except Exception as e:
+        print(f"❌ Неожиданная ошибка: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

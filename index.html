@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Инженерный калькулятор</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="calculator">
+        <div class="calculator-header">
+            <h1>🔬 Инженерный калькулятор</h1>
+        </div>
+
+        <div class="display-container">
+            <div class="display-expression" id="expression"></div>
+            <div class="display-result" id="result" aria-live="polite">0</div>
+        </div>
+
+        <div class="mode-toggle">
+            <button id="degRadBtn" class="mode-btn" onclick="toggleDegRad()">DEG</button>
+            <button id="invBtn" class="mode-btn" onclick="toggleInv()">INV</button>
+        </div>
+
+        <div class="buttons">
+            <!-- Row 1: Scientific functions (data-inv — label in INV mode) -->
+            <button class="btn btn-scientific" data-inv="sin⁻¹" onclick="insertFunction('sin(')">sin</button>
+            <button class="btn btn-scientific" data-inv="cos⁻¹" onclick="insertFunction('cos(')">cos</button>
+            <button class="btn btn-scientific" data-inv="tan⁻¹" onclick="insertFunction('tan(')">tan</button>
+            <button class="btn btn-scientific" data-inv="10ˣ" onclick="insertFunction('log(')">log</button>
+            <button class="btn btn-scientific" data-inv="eˣ" onclick="insertFunction('ln(')">ln</button>
+
+            <!-- Row 2: More scientific functions -->
+            <button class="btn btn-scientific" data-inv="x²" onclick="insertFunction('sqrt(')">√</button>
+            <button class="btn btn-scientific" onclick="insertOperator('^')">x^y</button>
+            <button class="btn btn-scientific" onclick="insertFunction('abs(')">|x|</button>
+            <button class="btn btn-scientific" onclick="insertConstant('pi')">π</button>
+            <button class="btn btn-scientific" onclick="insertConstant('e')">e</button>
+
+            <!-- Row 3: Parentheses and clear -->
+            <button class="btn btn-scientific" onclick="insertChar('(')">(</button>
+            <button class="btn btn-scientific" onclick="insertChar(')')">)</button>
+            <button class="btn btn-clear" onclick="clearAll()">AC</button>
+            <button class="btn btn-clear" onclick="clearEntry()">CE</button>
+            <button class="btn btn-operator" onclick="backspace()">⌫</button>
+
+            <!-- Row 4: Numbers and basic operations -->
+            <button class="btn btn-number" onclick="insertChar('7')">7</button>
+            <button class="btn btn-number" onclick="insertChar('8')">8</button>
+            <button class="btn btn-number" onclick="insertChar('9')">9</button>
+            <button class="btn btn-operator" onclick="insertOperator('/')">÷</button>
+            <button class="btn btn-operator" onclick="insertChar('%')">%</button>
+
+            <!-- Row 5 -->
+            <button class="btn btn-number" onclick="insertChar('4')">4</button>
+            <button class="btn btn-number" onclick="insertChar('5')">5</button>
+            <button class="btn btn-number" onclick="insertChar('6')">6</button>
+            <button class="btn btn-operator" onclick="insertOperator('*')">×</button>
+            <button class="btn btn-scientific" data-inv="ln" onclick="insertFunction('exp(')">exp</button>
+
+            <!-- Row 6 -->
+            <button class="btn btn-number" onclick="insertChar('1')">1</button>
+            <button class="btn btn-number" onclick="insertChar('2')">2</button>
+            <button class="btn btn-number" onclick="insertChar('3')">3</button>
+            <button class="btn btn-operator" onclick="insertOperator('-')">−</button>
+            <button class="btn btn-operator" onclick="insertOperator('+')">+</button>
+
+            <!-- Row 7 -->
+            <button class="btn btn-number" onclick="insertChar('0')">0</button>
+            <button class="btn btn-number" onclick="insertChar('.')">.</button>
+            <button class="btn btn-operator" onclick="toggleSign()">±</button>
+            <button class="btn btn-equals" onclick="calculate()">=</button>
+            <button class="btn btn-operator" onclick="insertChar('!')">n!</button>
+        </div>
+    </div>
+
+    <script src="calc-engine.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

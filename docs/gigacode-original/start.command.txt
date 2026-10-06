@@ -1,0 +1,135 @@
+#!/bin/bash
+###############################################################################
+#  🔬 Инженерный калькулятор - Скрипт запуска
+#  Запускает локальный сервер и открывает калькулятор в браузере
+###############################################################################
+
+# Цвета для терминала
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Определяем рабочую директорию
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Проверяем наличие Python
+if ! command -v python3 &> /dev/null; then
+    echo ""
+    echo -e "${RED}❌ Ошибка: Python3 не найден!${NC}"
+    echo ""
+    echo "  Установите Python3:"
+    echo "    brew install python3"
+    echo ""
+    exit 1
+fi
+
+# Определяем порт (можно переопределить через аргумент)
+PORT=${1:-8080}
+
+# Определяем PID сервера для последующей остановки
+SERVER_PID=""
+
+# Функция остановки сервера
+cleanup() {
+    echo ""
+    echo ""
+    echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${CYAN}  🛑 Остановка сервера...${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+    echo ""
+    
+    # Останавливаем сервер
+    if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
+        kill "$SERVER_PID" 2>/dev/null
+        wait "$SERVER_PID" 2>/dev/null
+        echo -e "${GREEN}  ✅ Сервер остановлен${NC}"
+    fi
+    
+    echo ""
+    echo -e "${GREEN}  💡 Спасибо за использование инженерного калькулятора!${NC}"
+    echo ""
+    exit 0
+}
+
+# Настраиваем ловушку для Ctrl+C
+trap cleanup SIGINT SIGTERM
+
+# Показываем баннер
+echo ""
+echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}  🔬 ИНЖЕНЕРНЫЙ КАЛЬКУЛЯТОР${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
+echo ""
+
+# Проверяем, свободен ли порт
+if lsof -i :"${PORT}" &> /dev/null; then
+    echo -e "${YELLOW}⚠️  Внимание: Порт ${PORT} уже используется!${NC}"
+    
+    # Пробуем освободить порт
+    echo -e "  🔄 Пытаемся освободить порт..."
+    kill $(lsof -t -i :"${PORT}") 2>/dev/null
+    sleep 1
+    
+    if lsof -i :"${PORT}" &> /dev/null; then
+        echo -e "${RED}  ❌ Не удалось освободить порт!${NC}"
+        echo ""
+        echo "  Решения:"
+        echo "    1. Закройте другие процессы на порту ${PORT}"
+        echo "    2. Укажите другой порт: ./start.command 8081"
+        echo ""
+        exit 1
+    else
+        echo -e "${GREEN}  ✅ Порт ${PORT} свободен${NC}"
+    fi
+fi
+
+# Запускаем сервер Python в фоне
+echo -e "  🚀 Запуск HTTP сервера на порту ${PORT}..."
+python3 "${SCRIPT_DIR}/server.py" &
+SERVER_PID=$!
+
+# Ждаем запуска сервера
+sleep 2
+
+# Проверяем, что сервер запустился
+if kill -0 "$SERVER_PID" 2>/dev/null; then
+    echo -e "${GREEN}  ✅ Сервер успешно запущен!${NC}"
+else
+    echo -e "${RED}  ❌ Не удалось запустить сервер!${NC}"
+    echo ""
+    exit 1
+fi
+
+# Определяем команду открытия браузера в зависимости от ОС
+open_browser() {
+    local url="http://localhost:${PORT}"
+    
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        open "$url"
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        xdg-open "$url" 2>/dev/null || gnome-open "$url" 2>/dev/null || firefox "$url" 2>/dev/null
+    elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+        start "" "$url"
+    fi
+}
+
+# Открываем браузер
+echo -e "  🌐 Открываем калькулятор в браузере..."
+sleep 1
+open_browser
+
+# Показываем информацию
+echo ""
+echo -e "  ${GREEN}📍 Адрес:${NC}       http://localhost:${PORT}"
+echo -e "  ${GREEN}📁 Папка:${NC}       ${SCRIPT_DIR}"
+echo ""
+echo -e "  ${YELLOW}Для остановки нажмите Ctrl+C${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
+echo ""
+
+# Ждем завершения (Ctrl+C)
+wait "$SERVER_PID" 2>/dev/null
