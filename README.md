@@ -7,7 +7,7 @@
 
 > Калькулятор в браузере: всё как в обычном, плюс инженерные функции
 
-**Онлайн:** [barbashin1970.github.io/engineer](https://barbashin1970.github.io/engineer/) · [проверочные сценарии](https://barbashin1970.github.io/engineer/tests/scenarios.html) · [исходная версия от GigaCode](https://barbashin1970.github.io/engineer/docs/gigacode-original/)
+**Онлайн:** [barbashin1970.github.io/ENGINEER](https://barbashin1970.github.io/ENGINEER/) · [проверочные сценарии](https://barbashin1970.github.io/ENGINEER/tests/scenarios.html) · [исходная версия от GigaCode](https://barbashin1970.github.io/ENGINEER/docs/gigacode-original/)
 
 Счёт идёт на JavaScript прямо на странице. Python нужен только для удобного запуска:
 `server.py` раздаёт файлы и открывает калькулятор в браузере. Ставить ничего не нужно,
@@ -167,6 +167,9 @@ git push -u origin main
 Там же работают проверочные сценарии — `…/engineer/tests/scenarios.html`, —
 и исходная версия от GigaCode — `…/engineer/docs/gigacode-original/`.
 Пустой файл `.nojekyll` говорит GitHub Pages отдавать файлы как есть, без сборки Jekyll.
+
+Адрес повторяет имя репозитория **с учётом регистра**: у этого проекта репозиторий
+`ENGINEER`, и сайт открывается по `…github.io/ENGINEER/`, а `…github.io/engineer/` даёт 404.
 
 ## 🛠️ Технологии
 
