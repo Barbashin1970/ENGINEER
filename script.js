@@ -3,22 +3,38 @@ let expression = '';         // what is typed, internal form: 2*π+sin(30
 let isDegrees = true;
 let isInv = false;
 let lastCalculation = false; // expression holds the result of «=»
+let lastValue = null;        // exact result of «=»: the display rounds, the chain does not
+let memory = 0;
+let hasMemory = false;
+let isEngineering = false;   // result format: exponent is a multiple of three
 
 // DOM elements
 const expressionEl = document.getElementById('expression'); // history line: 2×π+sin(30) =
 const resultEl = document.getElementById('result');         // main display
 const degRadBtn = document.getElementById('degRadBtn');
 const invBtn = document.getElementById('invBtn');
+const engBtn = document.getElementById('engBtn');
+const memoryIndicator = document.getElementById('memoryIndicator');
 
-// What the scientific keys insert in INV mode (|x| has no inverse)
+// What the scientific keys insert in INV mode
 const INVERSE = {
     'sin(': 'asin(',
     'cos(': 'acos(',
     'tan(': 'atan(',
+    'sinh(': 'asinh(',
+    'cosh(': 'acosh(',
+    'tanh(': 'atanh(',
     'log(': '10^(',
     'ln(': 'e^(',
-    'sqrt(': '^2',
+    'sqrt(': 'cbrt(',
     'exp(': 'ln(',
+};
+
+// Postfix keys: x², x³, 1/x
+const SUFFIX_BY_KEY = {
+    'x²': '²',
+    'x³': '³',
+    '1/x': '⁻¹',
 };
 
 // A function opening at the end of the expression: sin(, asin(, 10^(, e^(
@@ -33,7 +49,13 @@ function isOperator(char) {
 
 // Expression ends with a complete operand: a number, constant, ')' or a postfix sign
 function endsWithOperand() {
-    return /[\d.)πe!%]$/.test(expression);
+    return /[\d.)πe!%²³¹]$/.test(expression);
+}
+
+// A number written without the rounding of the display: String() gives the
+// shortest text that reads back into exactly the same double (1/3 keeps 17 digits).
+function exactString(value) {
+    return String(value).replace('e', 'E');
 }
 
 // After «=» a new number starts from scratch; an operator continues the result
@@ -42,6 +64,13 @@ function startNewEntry() {
         expression = '';
         lastCalculation = false;
     }
+}
+
+// Continue from the exact result after «=» instead of the rounded text on the display
+function continueFromResult() {
+    if (!lastCalculation) return;
+    expression = lastValue !== null ? exactString(lastValue) : '';
+    lastCalculation = false;
 }
 
 // Insert character: digit, point, parenthesis, operator, '!' or '%'
@@ -68,6 +97,9 @@ function insertDigit(digit) {
     startNewEntry();
     if (/(^|[^\d.E])0$/.test(expression)) {
         expression = expression.slice(0, -1);
+    } else if (/(?:[!%²³¹]|⁻¹)$/.test(expression)) {
+        // 5% then 2 must not silently become 5 % 2: show the multiplication
+        expression += '*';
     }
     expression += digit;
     updateDisplay();
@@ -76,6 +108,11 @@ function insertDigit(digit) {
 // Decimal point: one per number; a point without digits before it becomes 0.
 function insertPoint() {
     startNewEntry();
+    if (/(?:[!%²³¹]|⁻¹|\))$/.test(expression)) {
+        expression += '*0.';
+        updateDisplay();
+        return;
+    }
     const number = expression.match(/[\d.]*(?:E[+-]?\d*)?$/)[0];
     if (number.includes('.') || number.includes('E')) return;
     expression += number === '' ? '0.' : '.';
@@ -95,7 +132,7 @@ function closeParenthesis() {
 
 // Insert operator: + − × ÷ ^
 function insertOperator(op) {
-    lastCalculation = false;
+    continueFromResult();
     const last = expression.slice(-1);
     if (isOperator(last)) {
         if (op === '-' && ['*', '/', '^'].includes(last)) {
@@ -118,7 +155,7 @@ function insertOperator(op) {
 
 // Factorial and percent go after a complete operand: 5!, (2+1)!, 50%
 function insertPostfix(sign) {
-    lastCalculation = false;
+    continueFromResult();
     if (endsWithOperand()) {
         expression += sign;
         updateDisplay();
@@ -128,24 +165,124 @@ function insertPostfix(sign) {
 // Insert function
 function insertFunction(func) {
     const text = isInv && INVERSE[func] ? INVERSE[func] : func;
-    if (text === '^2') {
-        // x² squares the operand already typed, including the result of «=»
-        lastCalculation = false;
-        if (endsWithOperand()) expression += text;
-    } else {
-        startNewEntry();
-        // 10^( right after a digit would merge into one number: 2 → 210^(
-        if (/^\d/.test(text) && /[\d.]$/.test(expression)) expression += '*';
-        expression += text;
+    if (SUFFIX_BY_KEY[text]) {
+        insertSuffix(SUFFIX_BY_KEY[text]);
+        return;
     }
+    startNewEntry();
+    // 10^( right after an operand would merge into one number: 2 → 2*10^(
+    if (/^\d/.test(text) && endsWithOperand()) expression += '*';
+    expression += text;
+    updateDisplay();
+}
+
+// Postfix square, cube and reciprocal: they apply to the whole operand before them,
+// including the result of «=» and a completed power: 2^3 → x² gives 64.
+function insertSuffix(symbol) {
+    if (lastCalculation) {
+        if (lastValue === null) return;
+        expression = exactString(lastValue);
+        lastCalculation = false;
+    }
+    if (!endsWithOperand()) return;
+    expression += symbol;
+    updateDisplay();
+}
+
+// y-th root of x: typed as x^(1/y), the missing ')' is closed by «=»
+function insertNthRoot() {
+    continueFromResult();
+    if (!endsWithOperand()) return;
+    expression += '^(1/';
+    updateDisplay();
+}
+
+// Word operators mod, nCr, nPr
+function insertNamedOperator(name) {
+    continueFromResult();
+    if (!endsWithOperand()) return;
+    if (expression.endsWith(name)) return;
+    expression += name;
     updateDisplay();
 }
 
 // Insert constant
 function insertConstant(constant) {
     startNewEntry();
+    if (endsWithOperand()) expression += '*';
     expression += constant === 'pi' ? 'π' : 'e';
     updateDisplay();
+}
+
+// Exponent of the number being typed: 2 EXP 3 → 2E3
+function insertExponent() {
+    continueFromResult();
+    if (!/[\d.]$/.test(expression)) return;
+    if (/E[+-]?\d*$/.test(expression)) return;
+    expression += 'E';
+    updateDisplay();
+}
+
+// Recall the exact previous result as a number in the expression
+function insertAnswer() {
+    if (lastValue === null || !Number.isFinite(lastValue)) return;
+    startNewEntry();
+    if (endsWithOperand()) expression += '*';
+    expression += exactString(lastValue);
+    updateDisplay();
+}
+
+// Value of what is typed right now, or null when it cannot be calculated
+function currentValue() {
+    if (expression === '') return lastValue;
+    try {
+        const value = evaluateExpression(expression, isDegrees);
+        return Number.isFinite(value) ? value : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function updateMemoryIndicator() {
+    memoryIndicator.classList.toggle('visible', hasMemory);
+}
+
+function memoryStore() {
+    const value = currentValue();
+    if (value === null) return;
+    memory = value;
+    hasMemory = true;
+    updateMemoryIndicator();
+}
+
+function memoryAdd() {
+    const value = currentValue();
+    if (value === null) return;
+    memory += value;
+    hasMemory = true;
+    updateMemoryIndicator();
+}
+
+function memorySubtract() {
+    const value = currentValue();
+    if (value === null) return;
+    memory -= value;
+    hasMemory = true;
+    updateMemoryIndicator();
+}
+
+function memoryRecall() {
+    startNewEntry();
+    if (!hasMemory) return;
+    if (endsWithOperand()) expression += '*';
+    expression += exactString(memory);
+    updateDisplay();
+}
+
+function memoryClear() {
+    memory = 0;
+    hasMemory = false;
+    updateMemoryIndicator();
 }
 
 // Clear all
@@ -156,17 +293,48 @@ function clearAll() {
     updateDisplay();
 }
 
-// Clear entry: the last number, constant or function opening; after «=» — the result
+// Index where the trailing !, %, ², ³ and ⁻¹ end
+function stripTrailingPostfix(text) {
+    let end = text.length;
+    for (;;) {
+        if (end >= 2 && text.slice(0, end).endsWith('⁻¹')) {
+            end -= 2;
+        } else if (end > 0 && '!%²³'.includes(text[end - 1])) {
+            end -= 1;
+        } else {
+            return end;
+        }
+    }
+}
+
+// Index where the last operand begins: a number, a constant or a group (...) with its function
+function lastOperandStart() {
+    const end = stripTrailingPostfix(expression);
+    const head = expression.slice(0, end);
+    if (head === '') return -1;
+    if (head.endsWith(')')) {
+        let depth = 0;
+        for (let i = head.length - 1; i >= 0; i--) {
+            if (head[i] === ')') depth++;
+            if (head[i] === '(' && --depth === 0) {
+                const name = head.slice(0, i).match(FUNCTION_NAME_AT_END);
+                return name ? i - name[0].length : i;
+            }
+        }
+        return -1;
+    }
+    const operand = head.match(/(?:(?:\d+\.?\d*|\.\d+)(?:E[+-]?\d+)?|[πe])$/);
+    return operand ? end - operand[0].length : -1;
+}
+
+// Clear entry: the last operand, function call or the result after «=»
 function clearEntry() {
     if (lastCalculation) {
-        expression = '';
-        lastCalculation = false;
-    } else {
-        const opening = expression.match(FUNCTION_OPENING);
-        const operand = expression.match(/(?:(?:\d+\.?\d*|\.\d*)(?:E[+-]?\d+)?|[πe])$/);
-        const entry = opening || operand;
-        if (entry) expression = expression.slice(0, -entry[0].length);
+        clearAll();
+        return;
     }
+    const start = lastOperandStart();
+    if (start >= 0) expression = expression.slice(0, start);
     updateDisplay();
 }
 
@@ -181,26 +349,6 @@ function backspace() {
     // No half of E-notation is left behind: 2E−7 → 2E− → 2
     expression = expression.replace(/E[+-]?$/, '');
     updateDisplay();
-}
-
-// Index where the last operand begins: a number, a constant or a group (...) with its function
-function lastOperandStart() {
-    let end = expression.length;
-    while (end > 0 && '!%'.includes(expression[end - 1])) end--;
-    const head = expression.slice(0, end);
-    if (head.endsWith(')')) {
-        let depth = 0;
-        for (let i = head.length - 1; i >= 0; i--) {
-            if (head[i] === ')') depth++;
-            if (head[i] === '(' && --depth === 0) {
-                const name = head.slice(0, i).match(FUNCTION_NAME_AT_END);
-                return name ? i - name[0].length : i;
-            }
-        }
-        return -1;
-    }
-    const operand = head.match(/(?:(?:\d+\.?\d*|\.\d+)(?:E[+-]?\d+)?|[πe])$/);
-    return operand ? end - operand[0].length : -1;
 }
 
 // Toggle sign of the last operand: 5+3 → 5−3, 5×3 → 5×−3, −3 → 3
@@ -234,6 +382,7 @@ function toggleDegRad() {
     isDegrees = !isDegrees;
     degRadBtn.classList.toggle('active', isDegrees);
     degRadBtn.textContent = isDegrees ? 'DEG' : 'RAD';
+    saveSettings();
 }
 
 // Toggle inverse; the scientific keys show what they insert in INV mode
@@ -246,19 +395,37 @@ function toggleInv() {
     });
 }
 
+// Toggle the engineering format of the result: 1234 → 1.234E+3, 0.000123 → 123E-6
+function toggleEngineering() {
+    isEngineering = !isEngineering;
+    engBtn.classList.toggle('active', isEngineering);
+    saveSettings();
+}
+
 // Expression as shown: × ÷ − √ sin⁻¹ instead of the internal * / - sqrt asin
 function prettify(text) {
     return text
         .replace(/\*/g, '×')
         .replace(/\//g, '÷')
-        .replace(/-/g, '−')
+        // The minus of E-notation is part of the number: 2E−7 must read back as 2E-7
+        .replace(/-/g, (match, offset, whole) => (whole[offset - 1] === 'E' ? match : '−'))
+        .replace(/asinh\(/g, 'sinh⁻¹(')
+        .replace(/acosh\(/g, 'cosh⁻¹(')
+        .replace(/atanh\(/g, 'tanh⁻¹(')
+        .replace(/asin\(/g, 'sin⁻¹(')
+        .replace(/acos\(/g, 'cos⁻¹(')
+        .replace(/atan\(/g, 'tan⁻¹(')
         .replace(/sqrt\(/g, '√(')
-        .replace(/a(sin|cos|tan)\(/g, '$1⁻¹(');
+        .replace(/cbrt\(/g, '∛(');
 }
 
 // Update display: the main display always shows what is typed
 function updateDisplay() {
     resultEl.textContent = expression ? prettify(expression) : '0';
+}
+
+function formatValue(value) {
+    return formatResult(value, isEngineering ? 'eng' : undefined);
 }
 
 // Calculate
@@ -270,16 +437,37 @@ function calculate() {
     try {
         const value = evaluateExpression(expression, isDegrees);
         if (!Number.isFinite(value)) throw new RangeError('Нет значения');
-        expression = formatResult(value);
+        lastValue = value;
+        expression = formatValue(value);
         lastCalculation = true;
         resultEl.textContent = prettify(expression);
     } catch (error) {
         // 1÷0, √−1, unfinished expression: show the error, next input starts from scratch
+        lastValue = null;
         expression = '';
         lastCalculation = false;
         resultEl.textContent = 'Ошибка';
     }
     expressionEl.textContent = shown + ' =';
+}
+
+// Remember the display mode between visits; file:// and private mode may forbid storage
+function saveSettings() {
+    try {
+        localStorage.setItem('engineer-settings', JSON.stringify({ degrees: isDegrees, eng: isEngineering }));
+    } catch (error) {
+        // Storage unavailable: the calculator simply starts in DEG every time
+    }
+}
+
+function loadSettings() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('engineer-settings') || '{}');
+        if (typeof saved.degrees === 'boolean') isDegrees = saved.degrees;
+        if (typeof saved.eng === 'boolean') isEngineering = saved.eng;
+    } catch (error) {
+        // Broken or unavailable storage: keep the defaults
+    }
 }
 
 // Keyboard support
@@ -306,5 +494,9 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Initialize display
+loadSettings();
 degRadBtn.classList.toggle('active', isDegrees);
+degRadBtn.textContent = isDegrees ? 'DEG' : 'RAD';
+engBtn.classList.toggle('active', isEngineering);
+updateMemoryIndicator();
 updateDisplay();

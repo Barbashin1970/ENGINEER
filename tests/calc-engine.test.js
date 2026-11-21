@@ -1,4 +1,5 @@
-// Проверки движка счёта: node --test tests/
+// Проверки движка счёта: node --test "tests/*.test.js"
+// (каталог целиком node --test не принимает: он ищет там файлы тестов по своим правилам)
 // В скобках после названия — разрыв из docs/KALKULYATOR-RAZBOR.md, который проверка ловит.
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -121,3 +122,79 @@ test('результат в E-нотации читается обратно (Р
     assert.equal(calc('1.5E+12/1E+12'), '1.5');
     assert.equal(calc('2e'), '5.43656365692'); // строчная e — число e, а не порядок
 });
+
+test('квадрат, куб и обратное значение применяются ко всему операнду', () => {
+    assert.equal(calc('3²'), '9');
+    assert.equal(calc('3³'), '27');
+    assert.equal(calc('4⁻¹'), '0.25');
+    assert.equal(calc('(2+1)²'), '9');
+    // постфикс слабее степени: 2^3² — это (2^3)², а не 2^(3²)
+    assert.equal(calc('2^3²'), '64');
+    assert.equal(calc('5+2^3²'), '69');
+    assert.equal(calc('2²^3'), '64');
+    assert.equal(calc('2^3^2'), '512'); // правоассоциативная степень не изменилась
+    assert.equal(calc('2⁻¹²'), '0.25'); // (1/2)²
+    assert.ok(noValue('0⁻¹'));
+});
+
+test('mod, nCr и nPr — с приоритетом умножения', () => {
+    assert.equal(calc('10mod3'), '1');
+    assert.equal(calc('-10mod3'), '-1');
+    assert.equal(calc('10mod3+1'), '2');
+    assert.equal(calc('5nCr2'), '10');
+    assert.equal(calc('5nPr2'), '20');
+    assert.equal(calc('100nCr50'), '1.00891344546E+29');
+    assert.equal(calc('2*10mod7'), '6');
+    assert.ok(noValue('10mod0'));
+    assert.ok(noValue('2nCr5'));
+    assert.ok(noValue('2.5nCr1'));
+});
+
+test('гиперболические функции и кубический корень', () => {
+    assert.equal(calc('sinh(0)'), '0');
+    assert.equal(calc('cosh(0)'), '1');
+    assert.equal(calc('tanh(0)'), '0');
+    assert.equal(calc('asinh(0)'), '0');
+    assert.equal(calc('acosh(1)'), '0');
+    assert.equal(calc('atanh(0.5)'), '0.549306144334');
+    assert.equal(calc('cbrt(27)'), '3');
+    assert.equal(calc('cbrt(-8)'), '-2');
+});
+
+test('корень нечётной степени из отрицательного числа (Р8)', () => {
+    assert.equal(calc('(-8)^(1/3)'), '-2');
+    assert.equal(calc('(-32)^(1/5)'), '-2');
+    assert.ok(noValue('(-8)^(2/3)'));
+    assert.ok(noValue('(-8)^0.5'));
+});
+
+test('formatResult не печатает Infinity и NaN', () => {
+    assert.equal(formatResult(Infinity), 'Ошибка');
+    assert.equal(formatResult(-Infinity), 'Ошибка');
+    assert.equal(formatResult(NaN), 'Ошибка');
+    assert.equal(formatResult(1e308 * 10), 'Ошибка');
+});
+
+test('инженерный формат: показатель кратен трём', () => {
+    assert.equal(formatResult(1234, 'eng'), '1.234E+3');
+    assert.equal(formatResult(0.000123, 'eng'), '123E-6');
+    assert.equal(formatResult(999, 'eng'), '999');
+    assert.equal(formatResult(-1234, 'eng'), '-1.234E+3');
+    assert.equal(formatResult(1, 'eng'), '1');
+});
+
+test('длинные выражения: цепочка любой длины, вложенность — с понятным пределом', () => {
+    const sum = '1+1+'.repeat(5000) + '1';
+    assert.equal(calc(sum), '10001');
+
+    const nested = '('.repeat(400) + '1' + ')'.repeat(400);
+    assert.equal(calc(nested), '1');
+
+    const tooDeep = '('.repeat(4000) + '1' + ')'.repeat(4000);
+    assert.throws(() => evaluateExpression(tooDeep, true), (error) => {
+        assert.ok(error instanceof SyntaxError);
+        assert.match(error.message, /Слишком сложное выражение/);
+        return true;
+    }, 'глубина 4000 не должна ронять стек');
+});
+

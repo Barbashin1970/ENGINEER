@@ -43,6 +43,8 @@
             doc.querySelectorAll('.buttons button').forEach((b) => { buttons[b.textContent.trim()] = b; });
             buttons['DEG/RAD'] = doc.getElementById('degRadBtn');
             buttons['INV'] = doc.getElementById('invBtn');
+            buttons['ENG'] = doc.getElementById('engBtn');
+            buttons['EXP'] = doc.getElementById('expBtn');
             const display = doc.getElementById('result');
             // DEG/RAD highlight right after page load, before any scenario touches it
             const degAtLoad = degIndicatorMatches();
@@ -83,12 +85,23 @@
                 equalsHeight() {
                     return buttons['='].offsetHeight === buttons['0'].offsetHeight ? 'одной высоты' : 'выше остальных';
                 },
+                memoryIndicator() {
+                    buttons['5'].click();
+                    buttons['MS'].click();
+                    const visible = doc.getElementById('memoryIndicator').classList.contains('visible');
+                    buttons['MC'].click();
+                    buttons['AC'].click();
+                    return visible ? 'виден' : 'не виден';
+                },
             };
 
             function reset() {
                 buttons['AC'].click();
                 if (buttons['DEG/RAD'].textContent.trim() !== 'DEG') buttons['DEG/RAD'].click();
                 if (buttons['INV'].classList.contains('active')) buttons['INV'].click();
+                const engBtn = doc.getElementById('engBtn');
+                if (engBtn.classList.contains('active')) engBtn.click();
+                if (doc.getElementById('memoryIndicator').classList.contains('visible')) buttons['MC'].click();
             }
 
             const results = SCENARIOS.map((scenario) => {

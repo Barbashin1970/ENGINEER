@@ -22,11 +22,20 @@ HOST = '127.0.0.1'  # только этот компьютер: из локал�
 
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
-    """HTTP обработчик с подавленными логами"""
+    """HTTP обработчик с подавленными логами обычных запросов"""
+
+    # HTTP/1.1 держит соединение открытым: одна страница забирает свои файлы
+    # не четырьмя соединениями, а одним. SimpleHTTPRequestHandler всегда
+    # присылает Content-Length, поэтому это безопасно.
+    protocol_version = 'HTTP/1.1'
 
     def log_message(self, format, *args):
-        """Подавляем стандартные логи"""
+        """Подавляем обычные логи запросов"""
         pass
+
+    def log_error(self, format, *args):
+        """Ошибки (битый запрос, обрыв) не прячем: без них нечего разбирать"""
+        print(f'⚠️  {self.address_string()}: {format % args}', file=sys.stderr)
 
     def end_headers(self):
         """Без кэша: после правки файлов браузер сразу получает новую версию"""

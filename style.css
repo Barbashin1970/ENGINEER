@@ -10,7 +10,7 @@ body {
     min-height: 100vh;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     padding: 20px;
 }
 
@@ -19,8 +19,9 @@ body {
     border-radius: 20px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     padding: 25px;
-    max-width: 500px;
+    max-width: 520px;
     width: 100%;
+    margin: auto;
 }
 
 .calculator-header {
@@ -47,23 +48,29 @@ body {
     font-size: 1rem;
     text-align: right;
     min-height: 24px;
-    word-wrap: break-word;
-    word-break: break-all;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: thin;
 }
 
 .display-result {
     color: #00ff88;
-    font-size: 2.5rem;
+    font-size: clamp(1.5rem, 6vw, 2.5rem);
     text-align: right;
     font-weight: bold;
     margin-top: 10px;
-    word-wrap: break-word;
-    word-break: break-all;
-    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    /* Digits keep their width: the line does not jump while typing */
+    font-variant-numeric: tabular-nums;
 }
 
 .mode-toggle {
     display: flex;
+    align-items: center;
     gap: 10px;
     margin-bottom: 15px;
 }
@@ -78,7 +85,7 @@ body {
     cursor: pointer;
     font-size: 0.9rem;
     font-weight: 600;
-    transition: all 0.3s;
+    transition: background-color 0.2s, color 0.2s;
 }
 
 .mode-btn:hover {
@@ -90,6 +97,20 @@ body {
     color: #1a1a2e;
 }
 
+.memory-indicator {
+    min-width: 24px;
+    text-align: center;
+    color: #ff9500;
+    font-weight: 700;
+    font-size: 1rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.memory-indicator.visible {
+    opacity: 1;
+}
+
 .buttons {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -97,18 +118,26 @@ body {
 }
 
 .btn {
-    padding: 18px 10px;
-    font-size: 1.1rem;
+    padding: 16px 8px;
+    font-size: 1.05rem;
     border: none;
     border-radius: 12px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background-color 0.2s, transform 0.1s;
     font-weight: 600;
     user-select: none;
+    /* Emoji-free symbols (², ⁻¹) stay on one line and centred */
+    white-space: nowrap;
 }
 
 .btn:active {
-    transform: scale(0.95);
+    transform: scale(0.96);
+}
+
+.btn:focus-visible,
+.mode-btn:focus-visible {
+    outline: 2px solid #00ff88;
+    outline-offset: 2px;
 }
 
 .btn-number {
@@ -132,16 +161,28 @@ body {
 .btn-scientific {
     background: #4a4a7a;
     color: #e0e0e0;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 .btn-scientific:hover {
     background: #5a5a8a;
 }
 
+.btn-memory {
+    background: #33335a;
+    color: #c8c8ff;
+    font-size: 0.85rem;
+    padding: 12px 6px;
+}
+
+.btn-memory:hover {
+    background: #44446e;
+}
+
 .btn-clear {
     background: #ff3b30;
     color: #ffffff;
+    font-size: 0.95rem;
 }
 
 .btn-clear:hover {
@@ -157,26 +198,44 @@ body {
     background: #33ff99;
 }
 
+.btn-wide {
+    grid-column: span 5;
+}
+
 /* Responsive design */
 @media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+
     .calculator {
-        padding: 15px;
+        padding: 14px;
+        border-radius: 14px;
+    }
+
+    .buttons {
+        gap: 7px;
     }
 
     .btn {
-        padding: 15px 8px;
-        font-size: 1rem;
+        padding: 13px 5px;
+        font-size: 0.95rem;
     }
 
     .btn-scientific {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
     }
 
-    .display-result {
-        font-size: 2rem;
+    .btn-memory {
+        font-size: 0.75rem;
+        padding: 10px 4px;
     }
 
     .calculator-header h1 {
-        font-size: 1.2rem;
+        font-size: 1.15rem;
+    }
+
+    .display-container {
+        padding: 14px;
     }
 }

@@ -19,59 +19,86 @@
         </div>
 
         <div class="mode-toggle">
-            <button id="degRadBtn" class="mode-btn" onclick="toggleDegRad()">DEG</button>
-            <button id="invBtn" class="mode-btn" onclick="toggleInv()">INV</button>
+            <button id="degRadBtn" class="mode-btn" onclick="toggleDegRad()" aria-label="Градусы или радианы">DEG</button>
+            <button id="invBtn" class="mode-btn" onclick="toggleInv()" aria-label="Обратные функции">INV</button>
+            <button id="engBtn" class="mode-btn" onclick="toggleEngineering()" aria-label="Инженерный формат результата">ENG</button>
+            <button id="expBtn" class="mode-btn" onclick="insertExponent()" aria-label="Ввод порядка числа">EXP</button>
+            <span id="memoryIndicator" class="memory-indicator" title="В памяти есть число" aria-label="В памяти есть число">M</span>
         </div>
 
         <div class="buttons">
-            <!-- Row 1: Scientific functions (data-inv — label in INV mode) -->
+            <!-- Row 1: Memory -->
+            <button class="btn btn-memory" onclick="memoryClear()" aria-label="Очистить память">MC</button>
+            <button class="btn btn-memory" onclick="memoryRecall()" aria-label="Вызвать из памяти">MR</button>
+            <button class="btn btn-memory" onclick="memoryAdd()" aria-label="Прибавить к памяти">M+</button>
+            <button class="btn btn-memory" onclick="memorySubtract()" aria-label="Вычесть из памяти">M−</button>
+            <button class="btn btn-memory" onclick="memoryStore()" aria-label="Записать в память">MS</button>
+
+            <!-- Row 2: Scientific functions (data-inv — label in INV mode) -->
             <button class="btn btn-scientific" data-inv="sin⁻¹" onclick="insertFunction('sin(')">sin</button>
             <button class="btn btn-scientific" data-inv="cos⁻¹" onclick="insertFunction('cos(')">cos</button>
             <button class="btn btn-scientific" data-inv="tan⁻¹" onclick="insertFunction('tan(')">tan</button>
             <button class="btn btn-scientific" data-inv="10ˣ" onclick="insertFunction('log(')">log</button>
             <button class="btn btn-scientific" data-inv="eˣ" onclick="insertFunction('ln(')">ln</button>
 
-            <!-- Row 2: More scientific functions -->
-            <button class="btn btn-scientific" data-inv="x²" onclick="insertFunction('sqrt(')">√</button>
+            <!-- Row 3: Roots and powers -->
+            <button class="btn btn-scientific" data-inv="∛" onclick="insertFunction('sqrt(')">√</button>
+            <button class="btn btn-scientific" onclick="insertSuffix('²')">x²</button>
+            <button class="btn btn-scientific" onclick="insertSuffix('³')">x³</button>
             <button class="btn btn-scientific" onclick="insertOperator('^')">x^y</button>
+            <button class="btn btn-scientific" onclick="insertNthRoot()">ʸ√x</button>
+
+            <!-- Row 4: Constants, reciprocal, natural exponent -->
             <button class="btn btn-scientific" onclick="insertFunction('abs(')">|x|</button>
             <button class="btn btn-scientific" onclick="insertConstant('pi')">π</button>
             <button class="btn btn-scientific" onclick="insertConstant('e')">e</button>
+            <button class="btn btn-scientific" onclick="insertSuffix('⁻¹')">1/x</button>
+            <button class="btn btn-scientific" data-inv="ln" onclick="insertFunction('exp(')">exp</button>
 
-            <!-- Row 3: Parentheses and clear -->
+            <!-- Row 5: Hyperbolic functions and word operators -->
+            <button class="btn btn-scientific" data-inv="sinh⁻¹" onclick="insertFunction('sinh(')">sinh</button>
+            <button class="btn btn-scientific" data-inv="cosh⁻¹" onclick="insertFunction('cosh(')">cosh</button>
+            <button class="btn btn-scientific" data-inv="tanh⁻¹" onclick="insertFunction('tanh(')">tanh</button>
+            <button class="btn btn-scientific" onclick="insertNamedOperator('mod')">mod</button>
+            <button class="btn btn-scientific" onclick="insertNamedOperator('nCr')">nCr</button>
+
+            <!-- Row 6 -->
+            <button class="btn btn-scientific" onclick="insertNamedOperator('nPr')">nPr</button>
+            <button class="btn btn-scientific" onclick="insertAnswer()">Ans</button>
             <button class="btn btn-scientific" onclick="insertChar('(')">(</button>
             <button class="btn btn-scientific" onclick="insertChar(')')">)</button>
             <button class="btn btn-clear" onclick="clearAll()">AC</button>
-            <button class="btn btn-clear" onclick="clearEntry()">CE</button>
-            <button class="btn btn-operator" onclick="backspace()">⌫</button>
 
-            <!-- Row 4: Numbers and basic operations -->
+            <!-- Row 7: Numbers and basic operations -->
             <button class="btn btn-number" onclick="insertChar('7')">7</button>
             <button class="btn btn-number" onclick="insertChar('8')">8</button>
             <button class="btn btn-number" onclick="insertChar('9')">9</button>
             <button class="btn btn-operator" onclick="insertOperator('/')">÷</button>
-            <button class="btn btn-operator" onclick="insertChar('%')">%</button>
+            <button class="btn btn-clear" onclick="clearEntry()">CE</button>
 
-            <!-- Row 5 -->
+            <!-- Row 8 -->
             <button class="btn btn-number" onclick="insertChar('4')">4</button>
             <button class="btn btn-number" onclick="insertChar('5')">5</button>
             <button class="btn btn-number" onclick="insertChar('6')">6</button>
             <button class="btn btn-operator" onclick="insertOperator('*')">×</button>
-            <button class="btn btn-scientific" data-inv="ln" onclick="insertFunction('exp(')">exp</button>
+            <button class="btn btn-operator" onclick="backspace()">⌫</button>
 
-            <!-- Row 6 -->
+            <!-- Row 9 -->
             <button class="btn btn-number" onclick="insertChar('1')">1</button>
             <button class="btn btn-number" onclick="insertChar('2')">2</button>
             <button class="btn btn-number" onclick="insertChar('3')">3</button>
             <button class="btn btn-operator" onclick="insertOperator('-')">−</button>
-            <button class="btn btn-operator" onclick="insertOperator('+')">+</button>
+            <button class="btn btn-operator" onclick="insertChar('%')">%</button>
 
-            <!-- Row 7 -->
+            <!-- Row 10 -->
             <button class="btn btn-number" onclick="insertChar('0')">0</button>
             <button class="btn btn-number" onclick="insertChar('.')">.</button>
             <button class="btn btn-operator" onclick="toggleSign()">±</button>
-            <button class="btn btn-equals" onclick="calculate()">=</button>
+            <button class="btn btn-operator" onclick="insertOperator('+')">+</button>
             <button class="btn btn-operator" onclick="insertChar('!')">n!</button>
+
+            <!-- Row 11 -->
+            <button class="btn btn-equals btn-wide" onclick="calculate()">=</button>
         </div>
     </div>
 
